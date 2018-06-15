@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">My BlueTooth BLE Demo</string>
+    <string name="ble_not_supported">Bluetooth LE Not Detected on this Device</string>
+    <string name="bluetooth_le_detected">Bluetooth LE is Detected on this Device</string>
+    <string name="bluetooth_le_ready">Bluetooth Le is Ready</string>
+    <string name="bluetooth_le_not_ready">Bluetooth LE is Not Enabled</string>
+    <string name="bluetooth_le_recommendation">Make Sure Bluetooth is Turned On and Location is enabled</string>
+</resources>
