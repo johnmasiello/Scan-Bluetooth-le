@@ -39,11 +39,9 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         switch (requestCode) {
             case REQUEST_ENABLE_BT:
                 if (resultCode == RESULT_OK) {
-                    mBluetoothReady = true;
                     mBluetoothStatusView.setText(getString(R.string.bluetooth_le_ready));
                     Toast.makeText(this,getString(R.string.bluetooth_le_ready), Toast.LENGTH_SHORT).show();
                 } else {
-                    mBluetoothReady = false;
                     mBluetoothStatusView.setText(R.string.bluetooth_le_detected);
                     Toast.makeText(this,getString(R.string.bluetooth_le_not_ready), Toast.LENGTH_SHORT).show();
                 }
@@ -89,7 +87,6 @@ public class BlueToothLE_Activity extends AppCompatActivity {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         } else if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
-            mBluetoothReady = true;
             mBluetoothStatusView.setText(getString(R.string.bluetooth_le_ready));
         }
     }
@@ -119,6 +116,10 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         mRecyclerAdapter.save(outState);
     }
 
+    /**
+     * mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()
+     * @param enable true -> start scan; false -> stop scan
+     */
     private void scanLeDevice(final boolean enable) {
         if (enable) {
             // Stops scanning after a pre-defined scan period.
@@ -128,10 +129,12 @@ public class BlueToothLE_Activity extends AppCompatActivity {
                 public void run() {
                     mScanning = false;
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        mBluetoothAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback2);
-                    } else {
-                        mBluetoothAdapter.stopLeScan(mLeScanCallback);
+                    if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            mBluetoothAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback2);
+                        } else {
+                            mBluetoothAdapter.stopLeScan(mLeScanCallback);
+                        }
                     }
                 }
             }, SCAN_PERIOD);
@@ -179,7 +182,8 @@ public class BlueToothLE_Activity extends AppCompatActivity {
     }
 
     public void ClickScan(View view) {
-        if (mBluetoothReady && mLocationGranted) {
+        if (mLocationGranted &&
+                mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
             if (!mScanning) {
                 mRecyclerAdapter.clearDevices();
                 scanLeDevice(true);
@@ -296,7 +300,6 @@ public class BlueToothLE_Activity extends AppCompatActivity {
     private BluetoothAdapter mBluetoothAdapter;
     private TextView mBluetoothStatusView;
     private MyRecyclerViewAdapter mRecyclerAdapter;
-    private boolean mBluetoothReady = false;
     private boolean mLocationGranted = false;
     private boolean mScanning;
     private Handler mScanHandler;
