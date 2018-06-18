@@ -8,6 +8,8 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -18,6 +20,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -273,7 +276,7 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
-            Log.d("ScanZZZ", "scan result");
+            Log.d(SCAN_TAG, "scan result");
             mRecyclerAdapter.addDeviceInfo(result.toString());
             mRecyclerAdapter.notifyDataSetChanged();
         }
@@ -281,7 +284,7 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
             super.onBatchScanResults(results);
-            Log.d("ScanZZZ", "scan results");
+            Log.d(SCAN_TAG, "scan results");
             if (results != null) {
                 for (ScanResult result : results) {
                     mRecyclerAdapter.addDeviceInfo(result.toString());
@@ -293,7 +296,26 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         @Override
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
-            Log.d("ScanZZZ", "scan failed");
+            Log.d(SCAN_TAG, "scan failed");
+        }
+    };
+
+    // Handle all the events sent by the MyBluetoothLEService
+    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if (MyBluetoothLEService.ACTION_DATA.equals(action)) {
+                String characteristicData;
+                characteristicData = intent.getStringExtra(MyBluetoothLEService.CHARACTERISTIC_KEY);
+
+                // TODO display the characteristic data
+                new AlertDialog.Builder(BlueToothLE_Activity.this)
+                        .setTitle("Characteristic Data")
+                        .setMessage(characteristicData)
+                        .show();
+            }
         }
     };
 
@@ -308,4 +330,6 @@ public class BlueToothLE_Activity extends AppCompatActivity {
     private static final long SCAN_PERIOD = 10000;
     private final int REQUEST_ENABLE_BT = 1;
     private final int REQUEST_LOCATION = 2;
+
+    private final String SCAN_TAG = "ScanZZZ";
 }

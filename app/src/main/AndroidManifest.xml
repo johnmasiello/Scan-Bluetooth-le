@@ -26,6 +26,8 @@
         </activity>
 
         <activity android:name=".BlueToothLE_Activity"/>
+
+        <service android:name=".MyBluetoothLEService" />
     </application>
 
 </manifest>
