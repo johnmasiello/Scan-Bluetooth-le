@@ -9,17 +9,22 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -92,12 +97,31 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         } else if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
             mBluetoothStatusView.setText(getString(R.string.bluetooth_le_ready));
         }
+
+        Intent intent = new Intent(this, MyBluetoothLEService.class);
+        bindService(intent, mBluetoothLEServiceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         scanLeDevice(false);
+
+        unbindService(mBluetoothLEServiceConnection);
+        mBoundBluetoothServiceLE_Flag = false;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LocalBroadcastManager.getInstance(this).registerReceiver(mGattUpdateReceiver,
+                createIntentForBroadcastReceiver());
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mGattUpdateReceiver);
     }
 
     @Override
@@ -196,6 +220,21 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         }
     }
 
+    // Helper method; decides autonomously whether to connect the device to the service, using the state of RecyclerAdapter
+    private void connectBluetoothDeviceToService(BluetoothDevice device) {
+        if (mBluetoothLEService != null && mRecyclerAdapter.isEmpty() && device != null) {
+            mBluetoothLEService.connect(this, true, device);
+        }
+    }
+
+    private IntentFilter createIntentForBroadcastReceiver() {
+        IntentFilter intentFilter = new IntentFilter(MyBluetoothLEService.ACTION_CONNECTED);
+        intentFilter.addAction(MyBluetoothLEService.ACTION_DISCONNECTED);
+        intentFilter.addAction(MyBluetoothLEService.ACTION_DATA);
+
+        return intentFilter;
+    }
+
     /** Adapter to the recycler view. It holds strong reference to the data
      *
      */
@@ -211,6 +250,10 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         void clearDevices() {
             mDevices.clear();
             notifyDataSetChanged();
+        }
+
+        boolean isEmpty() {
+            return mDevices.isEmpty();
         }
 
         @NonNull
@@ -266,6 +309,7 @@ public class BlueToothLE_Activity extends AppCompatActivity {
 
                             mRecyclerAdapter.addDeviceInfo(device.toString() + " rssi="+rssi+" record length="+scanRecord.length);
                             mRecyclerAdapter.notifyDataSetChanged();
+                            connectBluetoothDeviceToService(device);
                         }
                     });
                 }
@@ -279,6 +323,7 @@ public class BlueToothLE_Activity extends AppCompatActivity {
             Log.d(SCAN_TAG, "scan result");
             mRecyclerAdapter.addDeviceInfo(result.toString());
             mRecyclerAdapter.notifyDataSetChanged();
+            connectBluetoothDeviceToService(result.getDevice());
         }
 
         @Override
@@ -288,6 +333,7 @@ public class BlueToothLE_Activity extends AppCompatActivity {
             if (results != null) {
                 for (ScanResult result : results) {
                     mRecyclerAdapter.addDeviceInfo(result.toString());
+                    connectBluetoothDeviceToService(result.getDevice());
                 }
                 mRecyclerAdapter.notifyDataSetChanged();
             }
@@ -301,7 +347,7 @@ public class BlueToothLE_Activity extends AppCompatActivity {
     };
 
     // Handle all the events sent by the MyBluetoothLEService
-    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+    public final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
@@ -319,11 +365,28 @@ public class BlueToothLE_Activity extends AppCompatActivity {
         }
     };
 
+    private ServiceConnection mBluetoothLEServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+
+            mBluetoothLEService = ((MyBluetoothLEService.LocalBinder) service).getService();
+            mBoundBluetoothServiceLE_Flag = true;
+            Log.d(SERVICE_TAG, "Bluetooth LE Service Is Bound to App");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mBoundBluetoothServiceLE_Flag = false;
+        }
+    };
+
+    private MyBluetoothLEService mBluetoothLEService;
     private BluetoothAdapter mBluetoothAdapter;
     private TextView mBluetoothStatusView;
     private MyRecyclerViewAdapter mRecyclerAdapter;
     private boolean mLocationGranted = false;
     private boolean mScanning;
+    private boolean mBoundBluetoothServiceLE_Flag;
     private Handler mScanHandler;
 
     // Stops scanning after 10 seconds.
@@ -332,4 +395,5 @@ public class BlueToothLE_Activity extends AppCompatActivity {
     private final int REQUEST_LOCATION = 2;
 
     private final String SCAN_TAG = "ScanZZZ";
+    private final String SERVICE_TAG = "ServiceZZZ";
 }

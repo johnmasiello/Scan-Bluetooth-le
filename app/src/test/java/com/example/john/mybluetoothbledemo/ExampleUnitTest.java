@@ -24,4 +24,10 @@ public class ExampleUnitTest {
 
         assertEquals(l, l2);
     }
+
+    @Test
+    public void testLongParsing() throws Exception {
+        long parsed = Long.parseLong("1234", 16);
+        assertEquals(0x1234L, parsed);
+    }
 }

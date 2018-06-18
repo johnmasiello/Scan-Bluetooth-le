@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -29,7 +30,14 @@ public class MyBluetoothLEService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        // Cache the binder; use a single instance for this class
+        return mLocalBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        close();
+        return super.onUnbind(intent);
     }
 
     // Connection Lifecycle
@@ -101,18 +109,18 @@ public class MyBluetoothLEService extends Service {
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status,
                                                 int newState) {
+                Log.i(GATT_CLIENT_TAG, "Connection changed");
+
                 String intentAction;
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    intentAction = "action connected";
-                    broadcastUpdate(intentAction);
+                    broadcastUpdate(ACTION_CONNECTED);
                     Log.i(GATT_CLIENT_TAG, "Connected to GATT server.");
                     Log.i(GATT_CLIENT_TAG, "Attempting to start service discovery:" +
                             mBluetoothGatt.discoverServices());
 
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    intentAction = "action disconnected";
                     Log.i(GATT_CLIENT_TAG, "Disconnected from GATT server.");
-                    broadcastUpdate(intentAction);
+                    broadcastUpdate(ACTION_DISCONNECTED);
                 }
             }
 
@@ -186,10 +194,28 @@ public class MyBluetoothLEService extends Service {
         };
     }
 
+    /**
+     * Expose the service when binding it to the client activity
+     */
+    class LocalBinder extends Binder {
+        MyBluetoothLEService getService() {
+            return MyBluetoothLEService.this;
+        }
+
+
+    }
+
+    private LocalBinder mLocalBinder = new LocalBinder();
     private BluetoothGatt mBluetoothGatt;
     private boolean mMainCharacteristicNotifyEnabled = true;
 
-    public final static String ACTION_DATA = "action data";
+    public final static String ACTION_CONNECTED         = "com.example.john.mybluetoothbledemo.action.action_connected";
+    public final static String ACTION_DISCONNECTED      = "com.example.john.mybluetoothbledemo.action.action_disconnected";
+    public final static String ACTION_DATA              = "com.example.john.mybluetoothbledemo.action.action_data";
+
+    /**
+     * Used by the intent to store the characteristic as data
+     */
     public final static String CHARACTERISTIC_KEY = "charKey";
 
     // Mock GATT Service
